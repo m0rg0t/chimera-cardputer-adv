@@ -29,6 +29,8 @@ The ESP32-S3 renders these single-voice arrangements live at 24 kHz. The head fo
 
 The firmware stores the note sequences and synthesizes the performances. The three melodies are in the public domain.
 
+See [Adding a melody](CONTRIBUTING.md#adding-a-melody) for the score format, menu updates, and firmware checks.
+
 ## Build and install
 
 The [standalone image built from this branch](dist/chimera-cardputer-adv-standalone.bin) includes Songs.
