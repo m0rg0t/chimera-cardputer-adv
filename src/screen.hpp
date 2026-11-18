@@ -2,12 +2,15 @@
 
 #include <string_view>
 #include "head.hpp"
+#include "songs.hpp"
 
 namespace chimera_adv {
 
 constexpr int kScreenWidth = 240;
 constexpr int kScreenHeight = 135;
 constexpr int kScreenSplit = 136;
+
+enum class ScreenMode { Say, Piano, Songs };
 
 struct ScreenState {
     std::string_view text;
@@ -16,9 +19,10 @@ struct ScreenState {
     unsigned vowel = 0;
     unsigned octave = 3;
     unsigned volume = 69;
-    bool say = true;
+    ScreenMode mode = ScreenMode::Say;
     bool playing = false;
     bool demo = false;
+    Song song = Song::OdeToJoy;
 };
 
 class Screen {

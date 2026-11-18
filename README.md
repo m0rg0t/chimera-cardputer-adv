@@ -1,24 +1,39 @@
 # CHIMERA for Cardputer-Adv
 
-[Project site](https://m0rg0t.github.io/chimera-cardputer-adv/) · [Download firmware](https://github.com/m0rg0t/chimera-cardputer-adv/releases/latest) · [Original CHIMERA](https://github.com/jamesondh/chimera-vocal-synth)
+[Project site](https://m0rg0t.github.io/chimera-cardputer-adv/) · [Download the current build](dist/chimera-cardputer-adv-standalone.bin) · [Releases](https://github.com/m0rg0t/chimera-cardputer-adv/releases) · [Original CHIMERA](https://github.com/jamesondh/chimera-vocal-synth)
 
-A standalone voice synthesizer for the M5Stack Cardputer-Adv. Type English on the built-in keyboard and press **Enter** to speak. The LCD shows a color-coded cross-section of CHIMERA’s head. The tongue, lips, jaw, and soft palate move with the active phoneme. Say wraps text and scrolls as you type. Piano highlights the key and vowel in use. Speech is created on the ESP32-S3 at 24 kHz and played through the ES8311 codec. No computer, Wi-Fi, or SD card is needed after installation.
+A standalone voice synthesizer for the M5Stack Cardputer-Adv. Type English on the built-in keyboard and press **Enter** to speak. The LCD shows a color-coded cross-section of CHIMERA’s head. The tongue, lips, jaw, and soft palate move with the active phoneme. Say wraps text and scrolls as you type. Piano highlights the key and vowel in use. Songs plays three public-domain melodies with the live voice engine and animated head. Speech is created on the ESP32-S3 at 24 kHz and played through the ES8311 codec. No computer, Wi-Fi, or SD card is needed after installation.
 
 ## Controls
 
 | Mode | Keys |
 | --- | --- |
 | Say | Type up to 96 characters. **Enter** speaks the line, **Backspace** edits it, and **Fn + backtick** stops playback. Use **Fn + -** and **Fn + =** to adjust volume. The line stays available for editing or replay. |
-| Both | **Tab** switches between Say and Piano. |
+| All modes | **Tab** cycles through Say, Piano, and Songs. |
 | Piano | **A W S E D F T G Y H U J K** play a chromatic scale. **1–5** select /a e i o u/. **Z/X** move an octave. **-/=** change the shared volume. **Enter** toggles the demo. |
+| Songs | **1–3** start a melody. **Enter** starts or stops the selected melody. **Fn + backtick** stops playback. Use **Fn + -** and **Fn + =** to adjust volume. |
 
-Volume starts at 69%. Both modes share the setting. The maximum speaker mixer gain is 6 dB higher than in the initial build. A peak limiter keeps loud notes and bursts within the digital output range.
+Volume starts at 69%. All modes share the setting. The maximum speaker mixer gain is 6 dB higher than in the initial build. A peak limiter keeps loud notes and bursts within the digital output range.
 
 Say supports English, common punctuation, and numbers read digit by digit. Unlisted words use spelling rules. Cyrillic input and Russian pronunciation are outside this version.
 
+## Songs
+
+The ESP32-S3 renders these single-voice arrangements live at 24 kHz. The head follows the vowel used for each note.
+
+| Key | Melody | Historical source |
+| --- | --- | --- |
+| **1** | **Ode to Joy**, theme excerpt | Beethoven’s Ninth Symphony, finale. [Berlin State Library autograph](https://staatsbibliothek-berlin.de/die-staatsbibliothek/abteilungen/musik/sammlungen/bestaende/l-van-beethoven-9-sinfonie/willkommen) |
+| **2** | **Frère Jacques** | Traditional French round documented in an eighteenth-century manuscript. [BnF manuscript MS-1843](https://catalogue.bnf.fr/ark:/12148/cb43892737w) |
+| **3** | **Twinkle, Twinkle, Little Star** | Traditional French tune *Ah! vous dirai-je, maman*, also used in Mozart’s K. 265. [Mozarteum score](https://dme.mozarteum.at/DME/objs/pdf/nma_199_49_57.pdf) |
+
+The firmware stores the note sequences and synthesizes the performances. The three melodies are in the public domain.
+
 ## Build and install
 
-[Install over USB](https://m0rg0t.github.io/chimera-cardputer-adv/#install) from a desktop browser such as Chrome or Edge. With the Cardputer-Adv in download mode, choose **Connect and install**, select its serial port, and confirm. The installer uses Web Serial through [ESP Web Tools](https://esphome.github.io/esp-web-tools/).
+The [standalone image built from this branch](dist/chimera-cardputer-adv-standalone.bin) includes Songs.
+
+[Install release v0.1.0 over USB](https://m0rg0t.github.io/chimera-cardputer-adv/#install) from a desktop browser such as Chrome or Edge. With the Cardputer-Adv in download mode, choose **Connect and install**, select its serial port, and confirm. The installer uses Web Serial through [ESP Web Tools](https://esphome.github.io/esp-web-tools/).
 
 ```sh
 pio run
@@ -67,7 +82,7 @@ mkdir -p /tmp/chimera-screens
 
 - The same M5GFX drawing code rendered desktop previews of the empty editor, active speech, long text, the 96-character limit, and an active piano note.
 - The ESP32-S3 build uses about 2.07 MB of the application partition and 24.8 KB of static RAM. The display sprite and task stacks allocate additional RAM at run time.
-- Desktop tests exercise sustained vowels, pitch, release, speech planning, out-of-dictionary words, long inputs, cancellation, and block-size independence. The speech WAV is synthesized by the same C++ code that runs on the board.
+- Desktop tests exercise sustained vowels, pitch, release, speech planning, out-of-dictionary words, long inputs, cancellation, and block-size independence. Song tests cover timing, the opening pitches, stopping, and restarting. The speech WAV is synthesized by the same C++ code that runs on the board.
 - On desktop, the mean level-normalized spectral error against the full engine fell from 6.95 to 5.05 dB across 14 vowels at 110, 145, 185, and 220 Hz. The reference ran at 48 kHz with 2× oversampling and was resampled to 24 kHz. The metric is RMS error across 25 mel-spaced bands from 160 Hz to 6.2 kHz over the last 500 ms of each note. The 145 and 220 Hz pitches were held out of the fit. This measures steady vowel timbre.
 - A local Whisper check recognized “The sun is shining today.” Longer lines with names remain harder to understand.
 - An instrumented Say build ran “Hello, the sun is shining today” on a physical 240 MHz Cardputer-Adv at 24 kHz. At full volume it rendered 200 speech blocks with a mean of 0.938 ms and a maximum render time of 1.087 ms against a 10.667 ms deadline. All 200 blocks reached the speaker queue with zero enqueue failures or empty queue observations. The head update loop ran 61 times during speech and observed 24 phoneme changes. The test submitted text programmatically through the same Say handler as Enter. Acoustic output, LCD appearance, and physical key entry still need a hands-on check.

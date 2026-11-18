@@ -148,8 +148,24 @@ void drawPiano(LovyanGFX& canvas, const ScreenState& state) {
         char key[] = {kSharps[i], 0};
         printAt(canvas, x + 2, 91, key, down ? kPanel : kMuted);
     }
-    printAt(canvas, 8, 123, "Tab Say", kMuted);
+    printAt(canvas, 8, 123, "Tab Songs", kMuted);
     rightAt(canvas, 128, 123, "-/= Vol", kMuted);
+}
+void drawSongs(LovyanGFX& canvas, const ScreenState& state) {
+    printAt(canvas, 8, 29, "SONGS", kAccent);
+    for (unsigned i = 0; i < kSongCount; ++i) {
+        const auto y = 42 + 17 * i;
+        const bool selected = i == static_cast<unsigned>(state.song);
+        char label[21];
+        std::snprintf(label, sizeof label, "%u %s", i + 1, kSongTitles[i]);
+        canvas.fillRoundRect(7, y, 122, 15, 3, selected ? kAccent : kSurface);
+        printAt(canvas, 11, y + 4, label, selected ? kPanel : kText);
+    }
+    printAt(canvas, 8, 101, state.playing ? "Playing    Fn+` Stop" : "Enter Play", kText);
+    printAt(canvas, 8, 123, "Tab Say", kMuted);
+    char volume[16];
+    std::snprintf(volume, sizeof volume, "Fn-/= %u%%", state.volume);
+    rightAt(canvas, 128, 123, volume, kMuted);
 }
 }  // namespace
 
@@ -166,10 +182,10 @@ void Screen::controls(LovyanGFX& display, const ScreenState& state) {
     printAt(sprite_, 16, 8, "CHIMERA", kText);
     sprite_.setTextSize(1);
     sprite_.drawFastHLine(8, 24, 120, kBorder);
-    if (state.say) {
-        drawSay(sprite_, state);
-    } else {
-        drawPiano(sprite_, state);
+    switch (state.mode) {
+        case ScreenMode::Say: drawSay(sprite_, state); break;
+        case ScreenMode::Piano: drawPiano(sprite_, state); break;
+        case ScreenMode::Songs: drawSongs(sprite_, state); break;
     }
     sprite_.pushSprite(&display, 0, 0);
 }

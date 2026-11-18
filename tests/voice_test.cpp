@@ -1,4 +1,5 @@
 #include "speech.hpp"
+#include "songs.hpp"
 
 #include <algorithm>
 #include <array>
@@ -65,6 +66,67 @@ std::vector<Sample> renderSpeech(std::string_view text, std::size_t blockSize) {
         result.insert(result.end(), buffer.begin(), buffer.begin() + n);
     }
     return result;
+}
+
+std::vector<Sample> renderSong(Song song, std::size_t blockSize) {
+    Voice voice;
+    SongPlayer player;
+    player.start(song);
+    std::vector<Sample> buffer(blockSize);
+    std::vector<Sample> result;
+    while (player.active()) {
+        const auto n = player.render(voice, buffer.data(), buffer.size());
+        assert(n > 0 && n <= buffer.size());
+        assert(player.pose() < PhCount);
+        result.insert(result.end(), buffer.begin(), buffer.begin() + n);
+    }
+    assert(player.pose() == PhIdle);
+    return result;
+}
+
+void testSongs() {
+    constexpr unsigned beats[] = {32, 32, 48};
+    constexpr unsigned bpm[] = {110, 124, 112};
+    constexpr unsigned firstNotePeriod[] = {65, 92, 92};  // F#4, C4, C4.
+    std::array<std::vector<Sample>, kSongCount> songs;
+    for (unsigned i = 0; i < kSongCount; ++i) {
+        const auto track = static_cast<Song>(i);
+        auto& audio = songs[i];
+        audio = renderSong(track, 256);
+        assert(audio == renderSong(track, 73));
+        assert(audio.size() == (beats[i] * kSampleRate * 60 + bpm[i] / 2) / bpm[i]);
+        const int amplitude = peak(audio.data(), audio.data() + audio.size());
+        assert(amplitude > 1000 && amplitude <= kVoicePeakPcm);
+
+        double periodError = 0, otherError = 0;
+        const auto period = firstNotePeriod[i];
+        for (unsigned n = 5000; n < 6000; ++n) {
+            const double aligned = audio[n] - audio[n - period];
+            const double misaligned = audio[n] - audio[n - period * 4 / 5];
+            periodError += aligned * aligned;
+            otherError += misaligned * misaligned;
+        }
+        assert(periodError < otherError * .08);
+        for (unsigned previous = 0; previous < i; ++previous) {
+            assert(audio != songs[previous]);
+        }
+
+        Voice voice;
+        SongPlayer player;
+        std::array<Sample, 256> block;
+        player.start(track);
+        assert(player.render(voice, block.data(), block.size()) == block.size());
+        assert(player.pose() != PhIdle);
+        player.stop();
+        assert(!player.active() && player.pose() == PhIdle);
+        assert(player.render(voice, block.data(), block.size()) == 0);
+        voice = Voice{};
+        player.start(track);
+        assert(player.render(voice, block.data(), block.size()) == block.size());
+        assert(std::equal(block.begin(), block.end(), audio.begin()));
+        std::cout << kSongTitles[i] << ", " << double(audio.size()) / kSampleRate
+                  << " seconds, peak " << amplitude << '\n';
+    }
 }
 
 int main(int argc, char** argv) {
@@ -173,5 +235,6 @@ int main(int argc, char** argv) {
     std::cout << "Speech preview: " << static_cast<double>(speech.size()) / kSampleRate
               << " seconds, peak " << peak(speech.data(), speech.data() + speech.size())
               << ", samples at limiter ceiling " << atLimit << '\n';
-    std::cout << "Voice and speech tests passed\n";
+    testSongs();
+    std::cout << "Voice, speech and song tests passed\n";
 }

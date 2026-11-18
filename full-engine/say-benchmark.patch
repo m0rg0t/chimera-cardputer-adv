@@ -1,6 +1,6 @@
 --- a/src/main.cpp
 +++ b/src/main.cpp
-@@ -31,6 +31,11 @@
+@@ -34,6 +34,11 @@
  std::atomic<unsigned> queueEmpty{0};
  std::atomic<unsigned> enqueueFailures{0};
  QueueHandle_t requests = nullptr;
@@ -12,7 +12,7 @@
  Screen screen;
  SpeechLine line;
  std::size_t length = 0;
-@@ -73,6 +78,7 @@
+@@ -79,6 +84,7 @@
      unsigned slot = 0;
      bool pending = false;
      bool started = false;
@@ -20,11 +20,11 @@
      for (;;) {
          const auto queued = M5Cardputer.Speaker.isPlaying(0);
          if (queued >= 2) {
-@@ -110,10 +116,26 @@
+@@ -125,10 +131,26 @@
              if (started && queued == 0) {
                  queueEmpty.fetch_add(1, std::memory_order_relaxed);
              }
-+            pendingSpeech = speechFrames > 0;
++            pendingSpeech = !playingSong && rendered > 0;
 +            if (pendingSpeech) {
 +                speechBlocks.fetch_add(1);
 +                speechUs.fetch_add(duration);
@@ -47,7 +47,7 @@
              slot = (slot + 1) % 3;
              pending = false;
              started = true;
-@@ -286,7 +308,21 @@
+@@ -320,7 +342,21 @@
      const bool enter = edge(keys.enter, wasEnter);
      const bool backspace = edge(keys.backspace, wasBackspace);
      const bool escape = edge(keys.esc, wasEscape);
@@ -67,14 +67,14 @@
 +        submitted = true;
 +        submittedAt = now;
 +    } else if (edge(keys.tab, wasTab)) {
-         sayMode = !sayMode;
+         mode = mode == ScreenMode::Say ? ScreenMode::Piano :
+                mode == ScreenMode::Piano ? ScreenMode::Songs : ScreenMode::Say;
          demo = false;
-         heldText.fill(false);
-@@ -310,10 +346,32 @@
+@@ -349,10 +385,32 @@
      if (now - lastHead >= 33) {
          lastHead = now;
          const auto phone = activePose.load(std::memory_order_relaxed);
-+        if (saying) {
++        if (mode == ScreenMode::Say && playing) {
 +            ++speechHeadTicks;
 +            if (phone != previousPose) {
 +                ++poseChanges;
@@ -82,11 +82,11 @@
 +            previousPose = phone;
 +        }
          screen.anatomy(M5Cardputer.Display, static_cast<Phone>(phone),
-                        sayMode ? saying && phone != PhIdle : shownNote != 0);
+                        mode == ScreenMode::Piano ? shownNote != 0 : playing && phone != PhIdle);
      }
 
 +    static bool finished = false;
-+    if (!finished && submitted && now - submittedAt >= 3500 && !saying) {
++    if (!finished && submitted && now - submittedAt >= 3500 && !playing) {
 +        const unsigned count = speechBlocks.load();
 +        Serial.printf("speech_blocks=%u queued=%u mean_us=%u peak=%u late=%u volume=%u\n",
 +                      count, speechQueued.load(), count ? speechUs.load() / count : 0,

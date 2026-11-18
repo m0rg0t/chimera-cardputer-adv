@@ -8,6 +8,7 @@
 
 #include "screen.hpp"
 #include "speech.hpp"
+#include "songs.hpp"
 
 namespace {
 using namespace chimera_adv;
@@ -19,14 +20,16 @@ static_assert(kVoicePeakPcm * kSpeakerMagnification <= 8 * INT16_MAX);
 constexpr char kPiano[] = "awsedftgyhujk";
 constexpr uint16_t kSlate = 0x1908;
 
-struct SpeechRequest {
+struct AudioRequest {
     SpeechLine line;
     bool cancel;
+    Song song = Song::Count;
 };
 
 std::atomic<std::uint32_t> pianoControl{0};
 std::atomic<unsigned> activePose{PhIdle};
 std::atomic<bool> speaking{false};
+std::atomic<bool> performing{false};
 std::atomic<unsigned> worstRenderUs{0};
 std::atomic<unsigned> queueEmpty{0};
 std::atomic<unsigned> enqueueFailures{0};
@@ -35,7 +38,9 @@ Screen screen;
 SpeechLine line;
 std::size_t length = 0;
 bool ready = false;
-bool sayMode = true;
+ScreenMode mode = ScreenMode::Say;
+Song selectedSong = Song::OdeToJoy;
+std::array<bool, kSongCount> heldSongs{};
 bool demo = false;
 bool wasTab = false;
 bool wasEnter = false;
@@ -69,6 +74,7 @@ constexpr unsigned kDemoStepMs = 270;
 void audioTask(void*) {
     Voice voice;
     Speech speech;
+    SongPlayer player;
     static std::int16_t pcm[3][kFrames];
     unsigned slot = 0;
     bool pending = false;
@@ -80,29 +86,38 @@ void audioTask(void*) {
             continue;
         }
         if (!pending) {
-            SpeechRequest request;
+            AudioRequest request;
             if (xQueueReceive(requests, &request, 0) == pdTRUE) {
                 if (request.cancel) {
                     speech.cancel();
+                    player.stop();
+                } else if (request.song != Song::Count) {
+                    speech.cancel();
+                    voice = Voice{};
+                    player.start(request.song);
                 } else {
+                    player.stop();
                     speech.start(request.line.text);
                 }
             }
 
             const auto before = micros();
-            const auto speechFrames = speech.render(voice, pcm[slot], kFrames);
-            if (speechFrames < kFrames) {
+            const bool playingSong = player.active();
+            const auto rendered = playingSong ? player.render(voice, pcm[slot], kFrames)
+                                              : speech.render(voice, pcm[slot], kFrames);
+            if (rendered < kFrames) {
                 const auto control = pianoControl.load(std::memory_order_relaxed);
                 if (control) {
                     voice.setControl(control & 0xFFu, (control >> 8u) - 1);
                 } else {
                     voice.articulate(PhIdle, 126.0f, 0.0f, 0.0f, 0, 0.5f);
                 }
-                voice.render(pcm[slot] + speechFrames, kFrames - speechFrames);
+                voice.render(pcm[slot] + rendered, kFrames - rendered);
             }
 
-            activePose.store(voice.pose(), std::memory_order_relaxed);
+            activePose.store(playingSong ? player.pose() : voice.pose(), std::memory_order_relaxed);
             speaking.store(speech.active(), std::memory_order_relaxed);
+            performing.store(player.active(), std::memory_order_relaxed);
             const auto duration = static_cast<unsigned>(micros() - before);
             if (duration > worstRenderUs.load(std::memory_order_relaxed)) {
                 worstRenderUs.store(duration, std::memory_order_relaxed);
@@ -131,7 +146,7 @@ bool edge(bool held, bool& previous) {
 }
 
 void cancel() {
-    const SpeechRequest request{{}, true};
+    const AudioRequest request{{}, true};
     xQueueOverwrite(requests, &request);
     notice = nullptr;
     dirty = true;
@@ -164,7 +179,7 @@ void edit(const Keyboard_Class::KeysState& keys, bool enter, bool backspace, boo
     }
     if (enter) {
         if (std::strpbrk(line.text, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")) {
-            const SpeechRequest request{line, false};
+            const AudioRequest request{line, false};
             xQueueOverwrite(requests, &request);
             notice = nullptr;
         } else {
@@ -216,6 +231,24 @@ void piano(bool enter, unsigned now) {
     }
 }
 
+void chooseSong(bool enter, bool escape) {
+    auto& keyboard = M5Cardputer.Keyboard;
+    bool selected = false;
+    for (unsigned i = 0; i < kSongCount; ++i) {
+        if (edge(keyboard.isKeyPressed(static_cast<char>('1' + i)), heldSongs[i])) {
+            selectedSong = static_cast<Song>(i);
+            selected = true;
+        }
+    }
+    if (escape || (enter && performing.load(std::memory_order_relaxed))) {
+        cancel();
+    } else if (selected || enter) {
+        const AudioRequest request{{}, false, selectedSong};
+        xQueueOverwrite(requests, &request);
+        dirty = true;
+    }
+}
+
 void fail(const char* message) {
     M5Cardputer.Speaker.end();
     M5Cardputer.Display.fillScreen(kSlate);
@@ -239,7 +272,7 @@ void setup() {
         fail("Cardputer-Adv required");
         return;
     }
-    requests = xQueueCreate(1, sizeof(SpeechRequest));
+    requests = xQueueCreate(1, sizeof(AudioRequest));
     if (!requests || !screen.begin()) {
         fail("UI allocation failed");
         return;
@@ -276,8 +309,9 @@ void loop() {
     const auto now = millis();
     const auto& keys = M5Cardputer.Keyboard.keysState();
     auto& keyboard = M5Cardputer.Keyboard;
-    const bool quieter = edge(sayMode ? keys.f11 : keyboard.isKeyPressed('-'), wasDown);
-    const bool louder = edge(sayMode ? keys.f12 : keyboard.isKeyPressed('='), wasUp);
+    const bool pianoMode = mode == ScreenMode::Piano;
+    const bool quieter = edge(pianoMode ? keyboard.isKeyPressed('-') : keys.f11, wasDown);
+    const bool louder = edge(pianoMode ? keyboard.isKeyPressed('=') : keys.f12, wasUp);
     if (quieter != louder) {
         volume = louder ? std::min(255u, volume + 16) : (volume < 16 ? 0 : volume - 16);
         M5Cardputer.Speaker.setVolume(volume);
@@ -287,31 +321,36 @@ void loop() {
     const bool backspace = edge(keys.backspace, wasBackspace);
     const bool escape = edge(keys.esc, wasEscape);
     if (edge(keys.tab, wasTab)) {
-        sayMode = !sayMode;
+        mode = mode == ScreenMode::Say ? ScreenMode::Piano :
+               mode == ScreenMode::Piano ? ScreenMode::Songs : ScreenMode::Say;
         demo = false;
         heldText.fill(false);
+        heldSongs.fill(false);
         pianoControl.store(0, std::memory_order_relaxed);
         cancel();
-    } else if (sayMode) {
+    } else if (mode == ScreenMode::Say) {
         edit(keys, enter, backspace, escape);
-    } else {
+    } else if (pianoMode) {
         piano(enter, now);
+    } else {
+        chooseSong(enter, escape);
     }
 
-    const bool saying = speaking.load(std::memory_order_relaxed);
-    static bool showedSpeech = false;
-    if (dirty || saying != showedSpeech) {
+    const bool playing = mode == ScreenMode::Songs ? performing.load(std::memory_order_relaxed)
+                                                  : speaking.load(std::memory_order_relaxed);
+    static bool showedPlayback = false;
+    if (dirty || playing != showedPlayback) {
         screen.controls(M5Cardputer.Display,
             {std::string_view(line.text, length), notice, shownNote, shownVowel,
-             octave, (100 * volume + 127) / 255, sayMode, saying, demo});
+             octave, (100 * volume + 127) / 255, mode, playing, demo, selectedSong});
         dirty = false;
-        showedSpeech = saying;
+        showedPlayback = playing;
     }
     if (now - lastHead >= 33) {
         lastHead = now;
         const auto phone = activePose.load(std::memory_order_relaxed);
         screen.anatomy(M5Cardputer.Display, static_cast<Phone>(phone),
-                       sayMode ? saying && phone != PhIdle : shownNote != 0);
+                       mode == ScreenMode::Piano ? shownNote != 0 : playing && phone != PhIdle);
     }
 
     static unsigned lastReport = now;
