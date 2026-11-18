@@ -33,9 +33,9 @@ See [Adding a melody](CONTRIBUTING.md#adding-a-melody) for the score format, men
 
 ## Build and install
 
-The [standalone image built from this branch](dist/chimera-cardputer-adv-standalone.bin) includes Songs.
+The [v0.2.0 release](https://github.com/m0rg0t/chimera-cardputer-adv/releases/tag/v0.2.0) includes Songs, a standalone image, an application image, and SHA-256 checksums.
 
-[Install release v0.1.0 over USB](https://m0rg0t.github.io/chimera-cardputer-adv/#install) from a desktop browser such as Chrome or Edge. With the Cardputer-Adv in download mode, choose **Connect and install**, select its serial port, and confirm. The installer uses Web Serial through [ESP Web Tools](https://esphome.github.io/esp-web-tools/).
+[Install over USB](https://m0rg0t.github.io/chimera-cardputer-adv/#install) from a desktop browser such as Chrome or Edge. With the Cardputer-Adv in download mode, choose **Connect and install**, select its serial port, and confirm. The installer uses Web Serial through [ESP Web Tools](https://esphome.github.io/esp-web-tools/).
 
 ```sh
 pio run
