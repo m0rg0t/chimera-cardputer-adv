@@ -1,0 +1,17 @@
+{
+  "name": "CHIMERA for Cardputer-Adv",
+  "version": "v0.1.0",
+  "new_install_prompt_erase": true,
+  "new_install_improv_wait_time": 0,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "https://raw.githubusercontent.com/m0rg0t/chimera-cardputer-adv/1ac219de930d7039e4ebb68c8ccc1edde9a84b1b/dist/chimera-cardputer-adv-standalone.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}

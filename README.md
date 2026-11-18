@@ -18,6 +18,8 @@ Say supports English, common punctuation, and numbers read digit by digit. Unlis
 
 ## Build and install
 
+[Install over USB](https://m0rg0t.github.io/chimera-cardputer-adv/#install) from a desktop browser such as Chrome or Edge. With the Cardputer-Adv in download mode, choose **Connect and install**, select its serial port, and confirm. The installer uses Web Serial through [ESP Web Tools](https://esphome.github.io/esp-web-tools/).
+
 ```sh
 pio run
 tools/test-host.sh

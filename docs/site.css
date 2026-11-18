@@ -22,7 +22,7 @@ body {
 
 a { color: inherit; }
 
-a:focus-visible {
+a:focus-visible, button:focus-visible {
   outline: 2px solid var(--lime);
   outline-offset: 5px;
 }
@@ -117,20 +117,24 @@ h1 {
   gap: 1rem 1.15rem;
 }
 
-.download {
+.primary-action {
   display: inline-flex;
   align-items: center;
   gap: 1rem;
   min-height: 2.9rem;
   padding: .7rem 1rem;
+  border: 0;
   border-radius: .28rem;
   color: #161e14;
   background: var(--lime);
+  font: inherit;
   font-weight: 750;
   text-decoration: none;
 }
 
-.download:hover { background: #e1ffad; }
+button.primary-action { cursor: pointer; }
+
+.primary-action:hover { background: #e1ffad; }
 
 .release-link {
   color: var(--muted);
@@ -248,6 +252,25 @@ figcaption {
 }
 
 .section-intro p { max-width: 55ch; }
+
+.web-installer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .8rem 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.web-installer span, .installer-fallback {
+  color: var(--muted);
+  font-size: .9rem;
+  line-height: 1.55;
+}
+
+.installer-fallback { margin: 0; }
+
+esp-web-install-button:not(:defined),
+esp-web-install-button:defined + .installer-fallback { display: none; }
 
 .steps {
   display: grid;
