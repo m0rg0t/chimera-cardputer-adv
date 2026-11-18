@@ -1,0 +1,103 @@
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -28,6 +28,11 @@
+ std::atomic<unsigned> queueEmpty{0};
+ std::atomic<unsigned> enqueueFailures{0};
+ QueueHandle_t requests = nullptr;
++std::atomic<unsigned> speechBlocks{0};
++std::atomic<unsigned> speechUs{0};
++std::atomic<unsigned> speechPeak{0};
++std::atomic<unsigned> speechLate{0};
++std::atomic<unsigned> speechQueued{0};
+ Screen screen;
+ SpeechLine line;
+ std::size_t length = 0;
+@@ -70,6 +75,7 @@
+     unsigned slot = 0;
+     bool pending = false;
+     bool started = false;
++    bool pendingSpeech = false;
+     for (;;) {
+         const auto queued = M5Cardputer.Speaker.isPlaying(0);
+         if (queued >= 2) {
+@@ -107,10 +113,26 @@
+             if (started && queued == 0) {
+                 queueEmpty.fetch_add(1, std::memory_order_relaxed);
+             }
++            pendingSpeech = speechFrames > 0;
++            if (pendingSpeech) {
++                speechBlocks.fetch_add(1);
++                speechUs.fetch_add(duration);
++                if (duration > kBlockUs) {
++                    speechLate.fetch_add(1);
++                }
++                unsigned peak = speechPeak.load();
++                for (auto sample : pcm[slot]) {
++                    peak = std::max(peak, static_cast<unsigned>(std::abs(static_cast<int>(sample))));
++                }
++                speechPeak.store(peak);
++            }
+             pending = true;
+         }
+         // M5Unified keeps at most two caller-owned buffers alive.
+         if (M5Cardputer.Speaker.playRaw(pcm[slot], kFrames, kSampleRate, false, 1, 0)) {
++            if (pendingSpeech) {
++                speechQueued.fetch_add(1);
++            }
+             slot = (slot + 1) % 3;
+             pending = false;
+             started = true;
+@@ -285,7 +307,19 @@
+     const bool enter = edge(keys.enter, wasEnter);
+     const bool backspace = edge(keys.backspace, wasBackspace);
+     const bool escape = edge(keys.esc, wasEscape);
+-    if (edge(keys.tab, wasTab)) {
++    static bool submitted = false;
++    static unsigned submittedAt = 0;
++    static unsigned speechHeadTicks = 0;
++    static unsigned poseChanges = 0;
++    static unsigned previousPose = PhIdle;
++    if (!submitted && now >= 1600) {
++        constexpr char phrase[] = "Hello, the sun is shining today.";
++        std::memcpy(line.text, phrase, sizeof(phrase));
++        length = sizeof(phrase) - 1;
++        edit(keys, true, false, false);
++        submitted = true;
++        submittedAt = now;
++    } else if (edge(keys.tab, wasTab)) {
+         sayMode = !sayMode;
+         demo = false;
+         heldText.fill(false);
+@@ -309,10 +343,32 @@
+     if (now - lastHead >= 33) {
+         lastHead = now;
+         const auto phone = activePose.load(std::memory_order_relaxed);
++        if (saying) {
++            ++speechHeadTicks;
++            if (phone != previousPose) {
++                ++poseChanges;
++            }
++            previousPose = phone;
++        }
+         screen.anatomy(M5Cardputer.Display, static_cast<Phone>(phone),
+                        sayMode ? saying && phone != PhIdle : shownNote != 0);
+     }
+ 
++    static bool finished = false;
++    if (!finished && submitted && now - submittedAt >= 3500 && !saying) {
++        const unsigned count = speechBlocks.load();
++        Serial.printf("speech_blocks=%u queued=%u mean_us=%u peak=%u late=%u\n",
++                      count, speechQueued.load(), count ? speechUs.load() / count : 0,
++                      speechPeak.load(), speechLate.load());
++        Serial.printf("head_ticks=%u phoneme_changes=%u\n", speechHeadTicks, poseChanges);
++        Serial.printf("render_max_us=%u budget_us=%u queue_empty=%u enqueue_failed=%u heap=%u\n",
++                      worstRenderUs.load(), kBlockUs, queueEmpty.load(),
++                      enqueueFailures.load(), static_cast<unsigned>(ESP.getFreeHeap()));
++        if (count > 0) {
++            Serial.println("CHIMERA probe finished");
++        }
++        finished = true;
++    }
+     static unsigned lastReport = now;
+     if (now - lastReport >= 5000) {
+         lastReport = now;
