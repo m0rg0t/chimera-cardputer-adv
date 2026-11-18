@@ -181,33 +181,54 @@ figcaption {
 }
 
 .listen {
-  display: grid;
-  grid-template-columns: 1fr minmax(0, 1fr);
-  align-items: center;
-  gap: 1.1rem 2rem;
-  padding: 1.25rem clamp(1.15rem, 3vw, 2.15rem);
+  padding: clamp(1.25rem, 3vw, 2.15rem);
   border: 1px solid #405446;
   border-radius: .6rem;
   background: #202a22;
 }
 
 .listen h2 {
-  margin: 0 0 .32rem;
-  font-size: 1.16rem;
+  margin: 0 0 .42rem;
+  font-size: clamp(1.3rem, 3vw, 1.85rem);
+  letter-spacing: -.035em;
 }
 
-.listen p {
+.listen > p {
   margin: 0;
   color: var(--muted);
   font-size: .95rem;
 }
 
-audio {
+.samples {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .8rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.samples li {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: .8rem;
+  padding: .9rem;
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  background: var(--base);
+}
+
+.samples p {
+  margin: 0;
+  font-size: .91rem;
+  line-height: 1.5;
+}
+
+.samples audio {
   display: block;
   width: 100%;
-  max-width: 27rem;
   min-width: 0;
-  justify-self: end;
 }
 
 .install {
@@ -279,14 +300,14 @@ footer a { text-underline-offset: .23em; }
 
 @media (max-width: 56rem) {
   .hero { gap: 2rem; }
+  .samples { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   h1 { font-size: clamp(3rem, 8.6vw, 6rem); }
 }
 
 @media (max-width: 44rem) {
-  .hero, .listen, .steps { grid-template-columns: 1fr; }
+  .hero, .samples, .steps { grid-template-columns: 1fr; }
   .intro { margin: 1.2rem 0 1.4rem; }
   .hero { gap: 2.4rem; }
   h1 { font-size: clamp(3.2rem, 13.5vw, 6rem); }
-  audio { justify-self: start; }
   .steps { gap: .85rem; }
 }
