@@ -76,7 +76,7 @@ nav a {
   text-decoration: none;
 }
 
-nav a:hover, footer a:hover, .release-link:hover { color: var(--lime); }
+nav a:hover, footer a:hover, .release-link:hover, .upstream a:hover { color: var(--lime); }
 
 .hero {
   display: grid;
@@ -137,6 +137,15 @@ h1 {
   font: .81rem var(--mono);
   text-underline-offset: .3em;
 }
+
+.upstream {
+  margin: 1rem 0 0;
+  color: var(--muted);
+  font-size: .86rem;
+  line-height: 1.55;
+}
+
+.upstream a { text-underline-offset: .23em; }
 
 .hardware {
   margin: 0;
@@ -261,7 +270,7 @@ kbd {
 }
 
 footer {
-  flex-wrap: wrap;
+  justify-content: flex-end;
   border-top: 1px solid var(--line);
   color: var(--muted);
 }
