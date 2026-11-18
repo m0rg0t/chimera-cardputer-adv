@@ -5,6 +5,9 @@
 
 namespace chimera_adv {
 
+// Leaves headroom for the Cardputer speaker mixer at 2× gain.
+constexpr std::int16_t kVoicePeakPcm = 16000;
+
 class Voice {
 public:
     // Midi note zero denotes release. Vowel is in a, e, i, o, u order.
@@ -42,6 +45,10 @@ private:
     float noiseFilter_ = 0.0f;
     float noiseSlow_ = 0.0f;
     float noiseFast_ = 0.0f;
+    unsigned limiterHold_ = 0;
+    float limiterPeak_ = kVoicePeakPcm;
+    float pulsePresenceState_[2]{};
+    float pulseShelfState_[2]{};
     float previousPressure_ = 0.0f;
     float output_ = 0.0f;
     std::uint32_t rng_ = 777;

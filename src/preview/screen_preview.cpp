@@ -44,10 +44,10 @@ int main(int argc, char** argv) {
     };
     const Frame frames[] = {
         {"say-ready", {}, PhIdle, false},
-        {"say-speaking", {"The sun is shining today.", nullptr, 0, 0, 3, 56, true, true}, PhAy, true},
+        {"say-speaking", {"The sun is shining today.", nullptr, 0, 0, 3, ScreenState{}.volume, true, true}, PhAy, true},
         {"say-long", {"Welcome aboard. Type a phrase and listen to what the vocal tract does."}, PhIdle, false},
         {"say-limit", {"012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345"}, PhIdle, false},
-        {"piano", {{}, nullptr, 55, 2, 3, 56, false}, PhI, true},
+        {"piano", {{}, nullptr, 55, 2, 3, ScreenState{}.volume, false}, PhI, true},
     };
     for (const auto& frame : frames) {
         screen.controls(display, frame.state);

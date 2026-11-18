@@ -15,7 +15,7 @@ struct ScreenState {
     unsigned note = 0;
     unsigned vowel = 0;
     unsigned octave = 3;
-    unsigned volume = 56;
+    unsigned volume = 69;
     bool say = true;
     bool playing = false;
     bool demo = false;

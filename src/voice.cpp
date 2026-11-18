@@ -4,6 +4,28 @@
 #include <cmath>
 
 namespace chimera_adv {
+namespace {
+
+struct Biquad {
+    float b0, b1, b2, a1, a2;
+
+    float step(float input, float (&state)[2]) const {
+        const float output = b0 * input + state[0];
+        state[0] = b1 * input - a1 * output + state[1];
+        state[1] = b2 * input - a2 * output;
+        return output;
+    }
+};
+
+// A 960 Hz presence boost and a 3.3 kHz high shelf at 24 kHz. The stock area
+// pulse feeding the coarse waveguide loses upper harmonics relative to the full
+// pressure-driven voice. Fit the same correction to all voiced phones and leave
+// the aspiration and consonant jets at their original injection points.
+static_assert(kSampleRate == 24000, "recompute the source filter for the new sample rate");
+constexpr Biquad kPulsePresence{1.13747851f, -1.79068996f, 0.71131185f, -1.79068996f, 0.84879036f};
+constexpr Biquad kPulseShelf{2.26434440f, -2.48236623f, 0.88914445f, -0.55554562f, 0.22666824f};
+}  // namespace
+
 
 void Voice::setControl(unsigned note, unsigned vowel) {
     const auto phone = static_cast<Phone>(std::min<unsigned>(vowel, kVowelCount - 1));
@@ -64,7 +86,11 @@ void Voice::render(std::int16_t* output, std::size_t frames) {
             std::fill_n(towardGlottis_, kSections, 0.0f);
             std::fill_n(toNose_, kNasalSections, 0.0f);
             std::fill_n(fromNose_, kNasalSections, 0.0f);
+            std::fill_n(pulsePresenceState_, 2, 0.0f);
+            std::fill_n(pulseShelfState_, 2, 0.0f);
             previousPressure_ = output_ = 0.0f;
+            limiterHold_ = 0;
+            limiterPeak_ = kVoicePeakPcm;
             std::fill(output + frame, output + frames, 0);
             break;
         }
@@ -78,6 +104,9 @@ void Voice::render(std::int16_t* output, std::size_t frames) {
         const auto index = static_cast<unsigned>(position);
         const float pulse = kGlottalPulse[index] +
             (position - index) * (kGlottalPulse[index + 1] - kGlottalPulse[index]);
+
+        const float voiced = kPulseShelf.step(kPulsePresence.step(pulse, pulsePresenceState_),
+                                               pulseShelfState_);
 
         float turbulence = 0.0f;
         if (noise_ > 1e-6f) {
@@ -119,7 +148,7 @@ void Voice::render(std::int16_t* output, std::size_t frames) {
             }
             forward = nextForward;
         }
-        towardLips_[0] = 0.82f * incomingGlottis + breath_ * pulse;
+        towardLips_[0] = 0.82f * incomingGlottis + breath_ * voiced;
         if (jet_ < kSections) {
             towardLips_[jet_] += turbulence;
         }
@@ -133,7 +162,21 @@ void Voice::render(std::int16_t* output, std::size_t frames) {
                                (jet_ == kSections ? turbulence : 0.0f);
         output_ += 0.52f * ((pressure - previousPressure_) - output_);
         previousPressure_ = pressure;
-        const float pcm = std::clamp(73000.0f * output_, -30000.0f, 30000.0f);
+        float pcm = 73000.0f * output_;
+        const float amplitude = std::abs(pcm);
+        // Hold the attenuation through the next glottal cycles, as in the full voice.
+        if (limiterHold_ > 0) {
+            --limiterHold_;
+        } else if (limiterPeak_ > kVoicePeakPcm) {
+            limiterPeak_ = std::max<float>(kVoicePeakPcm, limiterPeak_ * 0.9996f);
+        }
+        if (amplitude > limiterPeak_) {
+            limiterPeak_ = amplitude;
+            limiterHold_ = kSampleRate / 50;
+        }
+        if (limiterPeak_ > kVoicePeakPcm) {
+            pcm *= kVoicePeakPcm / limiterPeak_;
+        }
         output[frame] = static_cast<std::int16_t>(pcm);
     }
 }

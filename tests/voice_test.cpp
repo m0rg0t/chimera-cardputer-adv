@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
         auto& pcm = vowels[vowel];
         pcm = renderVowel(vowel);
         const int amplitude = peak(pcm.data(), pcm.data() + pcm.size());
-        assert(amplitude >= 100 && amplitude < 30000);
+        assert(amplitude >= 100 && amplitude < kVoicePeakPcm);
 
         // One steady A3 cycle is 109.09 samples. A one-cycle delay should match
         // much better than a nonharmonic delay regardless of which formants dominate.
@@ -114,13 +114,17 @@ int main(int argc, char** argv) {
 
     // Exercise the keyboard range and several live vowel changes at every note.
     Voice stress;
+    int stressPeak = 0;
     for (unsigned note = 36; note <= 84; ++note) {
         for (unsigned vowel = 0; vowel < kVowelCount; ++vowel) {
             stress.setControl(note, vowel);
             stress.render(pcm.data(), 1024);
-            assert(peak(pcm.data(), pcm.data() + 1024) < 30000);
+            stressPeak = std::max(stressPeak, peak(pcm.data(), pcm.data() + 1024));
         }
     }
+
+    assert(stressPeak <= kVoicePeakPcm);
+    std::cout << "Keyboard stress peak " << stressPeak << " / " << kVoicePeakPcm << '\n';
 
     std::vector<Sample> preview;
     Voice performer;
@@ -141,7 +145,7 @@ int main(int argc, char** argv) {
     performer.setControl(0, 0);
     performer.render(pcm.data(), kSampleRate / 4);
     preview.insert(preview.end(), pcm.begin(), pcm.begin() + kSampleRate / 4);
-    assert(peak(preview.data(), preview.data() + preview.size()) < 30000);
+    assert(peak(preview.data(), preview.data() + preview.size()) <= kVoicePeakPcm);
     if (argc >= 2) {
         writeWave(argv[1], preview);
     }
@@ -150,9 +154,9 @@ int main(int argc, char** argv) {
     assert(speech == renderSpeech(text, 71));
     assert(speech != renderSpeech("Are there five voices on this machine?", 256));
     assert(peak(speech.data(), speech.data() + speech.size()) > 1000);
-    const auto clipped = std::count_if(speech.begin(), speech.end(),
-                                      [](auto n) { return std::abs(int(n)) == 30000; });
-    assert(static_cast<std::size_t>(clipped) * 1000 < speech.size());
+    const auto atLimit = std::count_if(speech.begin(), speech.end(),
+                                      [](auto n) { return std::abs(int(n)) == kVoicePeakPcm; });
+    assert(static_cast<std::size_t>(atLimit) * 1000 < speech.size());
     const auto fallback = renderSpeech("Zibberquux can't say 429.", 256);
     assert(peak(fallback.data(), fallback.data() + fallback.size()) > 1000);
     const auto longLine = renderSpeech(std::string(kTextLimit, '7'), 2048);
@@ -168,6 +172,6 @@ int main(int argc, char** argv) {
     }
     std::cout << "Speech preview: " << static_cast<double>(speech.size()) / kSampleRate
               << " seconds, peak " << peak(speech.data(), speech.data() + speech.size())
-              << ", clipped samples " << clipped << '\n';
+              << ", samples at limiter ceiling " << atLimit << '\n';
     std::cout << "Voice and speech tests passed\n";
 }

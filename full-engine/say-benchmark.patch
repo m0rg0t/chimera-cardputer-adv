@@ -1,6 +1,6 @@
 --- a/src/main.cpp
 +++ b/src/main.cpp
-@@ -28,6 +28,11 @@
+@@ -31,6 +31,11 @@
  std::atomic<unsigned> queueEmpty{0};
  std::atomic<unsigned> enqueueFailures{0};
  QueueHandle_t requests = nullptr;
@@ -12,7 +12,7 @@
  Screen screen;
  SpeechLine line;
  std::size_t length = 0;
-@@ -70,6 +75,7 @@
+@@ -73,6 +78,7 @@
      unsigned slot = 0;
      bool pending = false;
      bool started = false;
@@ -20,7 +20,7 @@
      for (;;) {
          const auto queued = M5Cardputer.Speaker.isPlaying(0);
          if (queued >= 2) {
-@@ -107,10 +113,26 @@
+@@ -110,10 +116,26 @@
              if (started && queued == 0) {
                  queueEmpty.fetch_add(1, std::memory_order_relaxed);
              }
@@ -47,7 +47,7 @@
              slot = (slot + 1) % 3;
              pending = false;
              started = true;
-@@ -285,7 +307,19 @@
+@@ -286,7 +308,21 @@
      const bool enter = edge(keys.enter, wasEnter);
      const bool backspace = edge(keys.backspace, wasBackspace);
      const bool escape = edge(keys.esc, wasEscape);
@@ -58,6 +58,8 @@
 +    static unsigned poseChanges = 0;
 +    static unsigned previousPose = PhIdle;
 +    if (!submitted && now >= 1600) {
++        volume = 255;
++        M5Cardputer.Speaker.setVolume(volume);
 +        constexpr char phrase[] = "Hello, the sun is shining today.";
 +        std::memcpy(line.text, phrase, sizeof(phrase));
 +        length = sizeof(phrase) - 1;
@@ -68,7 +70,7 @@
          sayMode = !sayMode;
          demo = false;
          heldText.fill(false);
-@@ -309,10 +343,32 @@
+@@ -310,10 +346,32 @@
      if (now - lastHead >= 33) {
          lastHead = now;
          const auto phone = activePose.load(std::memory_order_relaxed);
@@ -82,13 +84,13 @@
          screen.anatomy(M5Cardputer.Display, static_cast<Phone>(phone),
                         sayMode ? saying && phone != PhIdle : shownNote != 0);
      }
- 
+
 +    static bool finished = false;
 +    if (!finished && submitted && now - submittedAt >= 3500 && !saying) {
 +        const unsigned count = speechBlocks.load();
-+        Serial.printf("speech_blocks=%u queued=%u mean_us=%u peak=%u late=%u\n",
++        Serial.printf("speech_blocks=%u queued=%u mean_us=%u peak=%u late=%u volume=%u\n",
 +                      count, speechQueued.load(), count ? speechUs.load() / count : 0,
-+                      speechPeak.load(), speechLate.load());
++                      speechPeak.load(), speechLate.load(), volume);
 +        Serial.printf("head_ticks=%u phoneme_changes=%u\n", speechHeadTicks, poseChanges);
 +        Serial.printf("render_max_us=%u budget_us=%u queue_empty=%u enqueue_failed=%u heap=%u\n",
 +                      worstRenderUs.load(), kBlockUs, queueEmpty.load(),

@@ -13,6 +13,9 @@ namespace {
 using namespace chimera_adv;
 constexpr unsigned kFrames = 256;
 constexpr unsigned kBlockUs = kFrames * 1000000 / kSampleRate;
+constexpr unsigned kSpeakerMagnification = 16;
+// M5Unified's mono mixer at maximum volume has gain below magnification / 8.
+static_assert(kVoicePeakPcm * kSpeakerMagnification <= 8 * INT16_MAX);
 constexpr char kPiano[] = "awsedftgyhujk";
 constexpr uint16_t kSlate = 0x1908;
 
@@ -45,7 +48,7 @@ bool wasUp = false;
 bool dirty = true;
 unsigned selectedVowel = 0;
 unsigned octave = 3;
-unsigned volume = 142;
+unsigned volume = 176;
 unsigned demoStart = 0;
 unsigned shownNote = 0;
 unsigned shownVowel = 0;
@@ -186,16 +189,6 @@ void piano(bool enter, unsigned now) {
         ++octave;
         dirty = true;
     }
-    if (edge(keyboard.isKeyPressed('-'), wasDown)) {
-        volume = volume < 16 ? 0 : volume - 16;
-        M5Cardputer.Speaker.setVolume(volume);
-        dirty = true;
-    }
-    if (edge(keyboard.isKeyPressed('='), wasUp)) {
-        volume = std::min(255u, volume + 16);
-        M5Cardputer.Speaker.setVolume(volume);
-        dirty = true;
-    }
     if (enter) {
         demo = !demo;
         demoStart = now;
@@ -255,7 +248,7 @@ void setup() {
     auto speaker = M5Cardputer.Speaker.config();
     speaker.sample_rate = kSampleRate;
     speaker.stereo = false;
-    speaker.magnification = 8;
+    speaker.magnification = kSpeakerMagnification;
     speaker.dma_buf_len = 128;
     speaker.dma_buf_count = 4;
     speaker.task_priority = 4;
@@ -282,6 +275,14 @@ void loop() {
     M5Cardputer.update();
     const auto now = millis();
     const auto& keys = M5Cardputer.Keyboard.keysState();
+    auto& keyboard = M5Cardputer.Keyboard;
+    const bool quieter = edge(sayMode ? keys.f11 : keyboard.isKeyPressed('-'), wasDown);
+    const bool louder = edge(sayMode ? keys.f12 : keyboard.isKeyPressed('='), wasUp);
+    if (quieter != louder) {
+        volume = louder ? std::min(255u, volume + 16) : (volume < 16 ? 0 : volume - 16);
+        M5Cardputer.Speaker.setVolume(volume);
+        dirty = true;
+    }
     const bool enter = edge(keys.enter, wasEnter);
     const bool backspace = edge(keys.backspace, wasBackspace);
     const bool escape = edge(keys.esc, wasEscape);

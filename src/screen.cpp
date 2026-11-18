@@ -92,7 +92,9 @@ void drawSay(LovyanGFX& canvas, const ScreenState& state) {
         printAt(canvas, 14, 102, "Enter Speak", kPanel);
     }
     printAt(canvas, 8, 123, "Tab Piano", kMuted);
-    rightAt(canvas, 128, 123, "English", kMuted);
+    char volume[16];
+    std::snprintf(volume, sizeof volume, "Fn-/= %u%%", state.volume);
+    rightAt(canvas, 128, 123, volume, kMuted);
 }
 
 void drawPiano(LovyanGFX& canvas, const ScreenState& state) {
