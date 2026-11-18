@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#131615">
+  <meta name="description" content="An offline physical-modeling voice synthesizer for M5Stack Cardputer-Adv. Download the CHIMERA firmware, hear a sample, and see how to install it.">
+  <title>CHIMERA for Cardputer-Adv</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="./">
+      <span class="mark" aria-hidden="true"></span>
+      CHIMERA
+    </a>
+    <nav aria-label="Main">
+      <a href="#install">Install</a>
+      <a href="https://github.com/m0rg0t/chimera-cardputer-adv">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="device-name">M5Stack Cardputer-Adv</p>
+        <h1 id="hero-title">CHIMERA</h1>
+        <p class="intro">An offline voice synthesizer with a visible vocal tract. Type a phrase, press Enter, and watch the head animate as it speaks.</p>
+        <div class="hero-links">
+          <a class="download" href="https://github.com/m0rg0t/chimera-cardputer-adv/releases/download/v0.1.0/chimera-cardputer-adv-standalone.bin">Download firmware <span aria-hidden="true">↓</span></a>
+          <a class="release-link" href="https://github.com/m0rg0t/chimera-cardputer-adv/releases/tag/v0.1.0">Release v0.1.0</a>
+        </div>
+      </div>
+
+      <figure class="hardware">
+        <div class="bezel">
+          <img src="assets/say.png" width="240" height="135" alt="The Cardputer screen during speech. The phrase appears on the left and the animated cross-section of the head appears on the right.">
+        </div>
+        <figcaption><span>Say mode</span><span>240 × 135 LCD</span></figcaption>
+      </figure>
+    </section>
+
+    <section class="listen" aria-labelledby="listen-title">
+      <div>
+        <h2 id="listen-title">Hear Say mode</h2>
+        <p>“The sun is shining today.”</p>
+      </div>
+      <audio controls preload="metadata" aria-label="CHIMERA voice sample">
+        <source src="assets/say.wav" type="audio/wav">
+        <a href="assets/say.wav">Download the speech sample</a>
+      </audio>
+    </section>
+
+    <section class="install" id="install" aria-labelledby="install-title">
+      <div class="section-intro">
+        <h2 id="install-title">Install on Cardputer-Adv</h2>
+        <p>The standalone image replaces the current firmware and partition table. Back up the device before flashing.</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <h3>Enter download mode</h3>
+          <p>Turn the Cardputer-Adv off. Hold <kbd>G0</kbd> while connecting it to your computer over USB.</p>
+        </li>
+        <li>
+          <h3>Flash the firmware</h3>
+          <p>Write the standalone image to offset <code>0x0</code> using esptool. See the <a href="https://github.com/m0rg0t/chimera-cardputer-adv/blob/v0.1.0/README.md#build-and-install">installation commands</a>.</p>
+        </li>
+        <li>
+          <h3>Type and speak</h3>
+          <p>Restart the device, type an English phrase, and press <kbd>Enter</kbd>. Use <kbd>Fn</kbd> + <kbd>−</kbd> to lower volume and <kbd>Fn</kbd> + <kbd>=</kbd> to raise it.</p>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <span>Based on <a href="https://github.com/jamesondh/chimera-vocal-synth">CHIMERA by Jameson Hodge</a>.</span>
+    <a href="https://github.com/m0rg0t/chimera-cardputer-adv/releases">All releases <span aria-hidden="true">↗</span></a>
+  </footer>
+</body>
+</html>

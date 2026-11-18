@@ -1,5 +1,7 @@
 # CHIMERA for Cardputer-Adv
 
+[Project site](https://m0rg0t.github.io/chimera-cardputer-adv/) · [Download firmware](https://github.com/m0rg0t/chimera-cardputer-adv/releases/latest)
+
 A standalone voice synthesizer for the M5Stack Cardputer-Adv. Type English on the built-in keyboard and press **Enter** to speak. The LCD shows a color-coded cross-section of CHIMERA’s head. The tongue, lips, jaw, and soft palate move with the active phoneme. Say wraps text and scrolls as you type. Piano highlights the key and vowel in use. Speech is created on the ESP32-S3 at 24 kHz and played through the ES8311 codec. No computer, Wi-Fi, or SD card is needed after installation.
 
 ## Controls
